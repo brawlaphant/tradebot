@@ -1,0 +1,7 @@
+[exchange_a]
+api_url = "https://api.exchangeA.com"
+api_key = "YourExchangeAKey"
+
+[exchange_b]
+api_url = "https://api.exchangeB.com"
+api_key = "YourExchangeBKey"
