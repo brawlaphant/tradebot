@@ -1,110 +1,65 @@
-use std::io;
+use ink_lang as ink;
 
-// Struct to represent the trading bot
-struct TradingBot {
-    eth_balance: f64,
-}
-
-impl TradingBot {
-    fn new(initial_balance: f64) -> TradingBot {
-        TradingBot {
-            eth_balance: initial_balance,
-        }
+#[ink::contract]
+mod pseudo_trading_bot {
+    #[ink(storage)]
+    pub struct PseudoTradingBot {
+        owner: AccountId,
+        eth_balance: Balance,
     }
 
-    fn deposit(&mut self, amount: f64) {
-        if amount > 0.0 {
+    impl PseudoTradingBot {
+        #[ink(constructor)]
+        pub fn new(initial_balance: Balance) -> Self {
+            Self {
+                owner: Self::env().caller(),
+                eth_balance: initial_balance,
+            }
+        }
+
+        #[ink(message)]
+        pub fn deposit(&mut self, amount: Balance) {
+            assert!(amount > 0, "Deposit amount must be greater than zero.");
             self.eth_balance += amount;
-            println!("Deposited {:.2} ETH. New balance: {:.2} ETH", amount, self.eth_balance);
-        } else {
-            println!("Invalid deposit amount.");
         }
-    }
 
-    fn withdraw(&mut self, amount: f64) {
-        if amount > 0.0 && amount <= self.eth_balance {
+        #[ink(message)]
+        pub fn withdraw(&mut self, amount: Balance) {
+            assert!(amount > 0 && amount <= self.eth_balance, "Invalid withdrawal amount.");
             self.eth_balance -= amount;
-            println!("Withdrawn {:.2} ETH. New balance: {:.2} ETH", amount, self.eth_balance);
-        } else {
-            println!("Invalid withdrawal amount.");
         }
-    }
 
-    fn simulate_trade(&mut self, is_buy: bool, amount: f64) {
-        if amount > 0.0 {
+        #[ink(message)]
+        pub fn simulate_trade(&mut self, is_buy: bool, amount: Balance) {
+            assert!(amount > 0, "Trade amount must be greater than zero.");
             if is_buy {
-                if self.eth_balance >= amount {
-                    self.eth_balance -= amount;
-                    println!("Bought {:.2} ETH. New balance: {:.2} ETH", amount, self.eth_balance);
-                } else {
-                    println!("Insufficient ETH balance for buying.");
-                }
+                assert!(self.eth_balance >= amount, "Insufficient ETH balance for buying.");
+                self.eth_balance -= amount;
             } else {
                 self.eth_balance += amount;
-                println!("Sold {:.2} ETH. New balance: {:.2} ETH", amount, self.eth_balance);
             }
-        } else {
-            println!("Invalid trade amount.");
+        }
+
+        #[ink(message)]
+        pub fn get_balance(&self) -> Balance {
+            self.eth_balance
         }
     }
 
-    fn get_balance(&self) -> f64 {
-        self.eth_balance
-    }
-}
+    #[cfg(test)]
+    mod tests {
+        use super::*;
 
-fn main() {
-    let mut bot = TradingBot::new(100.0); // Initial ETH balance
-
-    loop {
-        println!("\nTrading Bot Menu:");
-        println!("1. Deposit ETH");
-        println!("2. Withdraw ETH");
-        println!("3. Simulate Trade");
-        println!("4. Get Balance");
-        println!("5. Quit");
-
-        let mut choice = String::new();
-        io::stdin().read_line(&mut choice).expect("Failed to read input");
-        let choice: u32 = choice.trim().parse().expect("Invalid input");
-
-        match choice {
-            1 => {
-                println!("Enter the amount to deposit: ");
-                let mut input = String::new();
-                io::stdin().read_line(&mut input).expect("Failed to read input");
-                let amount: f64 = input.trim().parse().expect("Invalid input");
-                bot.deposit(amount);
-            }
-            2 => {
-                println!("Enter the amount to withdraw: ");
-                let mut input = String::new();
-                io::stdin().read_line(&mut input).expect("Failed to read input");
-                let amount: f64 = input.trim().parse().expect("Invalid input");
-                bot.withdraw(amount);
-            }
-            3 => {
-                println!("Buy (1) or Sell (0)? ");
-                let mut input = String::new();
-                io::stdin().read_line(&mut input).expect("Failed to read input");
-                let is_buy: bool = input.trim().parse().expect("Invalid input");
-                println!("Enter the trade amount: ");
-                let mut input = String::new();
-                io::stdin().read_line(&mut input).expect("Failed to read input");
-                let amount: f64 = input.trim().parse().expect("Invalid input");
-                bot.simulate_trade(is_buy, amount);
-            }
-            4 => {
-                let balance = bot.get_balance();
-                println!("Current balance: {:.2} ETH", balance);
-            }
-            5 => {
-                println!("Exiting the program.");
-                break;
-            }
-            _ => {
-                println!("Invalid choice. Please try again.");
-            }
+        #[ink::test]
+        fn it_works() {
+            let mut bot = PseudoTradingBot::new(100);
+            assert_eq!(bot.get_balance(), 100);
+            bot.deposit(50);
+            assert_eq!(bot.get_balance(), 150);
+            bot.simulate_trade(true, 25);
+            assert_eq!(bot.get_balance(), 125);
+            bot.withdraw(75);
+            assert_eq!(bot.get_balance(), 50);
         }
     }
 }
